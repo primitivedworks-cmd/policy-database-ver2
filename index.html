@@ -443,7 +443,11 @@ const SK_WORKER = 'pdb_worker_url';
 const SK_GAS = 'pdb_gas_url';
 const SK_TOKEN = 'pdb_search_token';
 
-let sheetUrl = localStorage.getItem(SK_SHEET) || '';
+// ★ スプレッドシートURLを固定する場合はここに貼り付ける（空文字のままにするとユーザー入力式）
+const DEFAULT_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTGhFBymn5GZ16V9IERPD35knCP5PxWoVpRyHkglCqa4gwq6TotkD8f36fhYWz6mJJTNaxVnaTbuBbw/pub?output=csv';
+// 例: const DEFAULT_SHEET_URL = 'https://docs.google.com/spreadsheets/d/xxxxx/pub?output=csv';
+
+let sheetUrl = DEFAULT_SHEET_URL || localStorage.getItem(SK_SHEET) || '';
 let workerUrl = localStorage.getItem(SK_WORKER) || '';
 let gasUrl = localStorage.getItem(SK_GAS) || '';
 let searchToken = localStorage.getItem(SK_TOKEN) || '';
