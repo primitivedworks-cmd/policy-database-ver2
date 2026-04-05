@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>人口減少対策 政策データベース</title>
+<style>
+  :root {
+    --primary: #1a56db;
+    --primary-light: #e8f0fe;
+    --secondary: #0e9f6e;
+    --warning: #d97706;
+    --bg: #f8fafc;
+    --border: #e2e8f0;
+    --text: #1e293b;
+    --text-muted: #64748b;
+    --tag-bg: #f1f5f9;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Hiragino Sans', 'Meiryo', sans-serif; background: var(--bg); color: var(--text); }
+
+  /* Header */
+  header {
+    background: linear-gradient(135deg, #1a56db 0%, #0e9f6e 100%);
+    color: white; padding: 18px 28px;
+  }
+  header h1 { font-size: 1.4rem; font-weight: 700; }
+  header p { font-size: 0.85rem; opacity: 0.85; margin-top: 2px; }
+  .header-meta { display: flex; gap: 12px; margin-top: 10px; align-items: center; flex-wrap: wrap; }
+  .stat-chip { background: rgba(255,255,255,0.2); border-radius: 20px; padding: 3px 12px; font-size: 0.8rem; }
+  .sheet-status { font-size: 0.78rem; opacity: 0.85; }
+
+  /* Setup banner */
+  .setup-banner {
+    background: #fffbeb; border-bottom: 2px solid #f59e0b;
+    padding: 12px 28px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  }
+  .setup-banner span { font-size: 0.88rem; color: #92400e; flex: 1; min-width: 200px; }
+  .setup-banner input {
+    flex: 2; min-width: 260px; border: 1.5px solid #f59e0b; border-radius: 7px;
+    padding: 7px 10px; font-size: 0.85rem; outline: none;
+  }
+  .btn-connect { background: #f59e0b; color: white; border: none; border-radius: 7px; padding: 7px 14px; cursor: pointer; font-weight: 600; font-size: 0.85rem; white-space: nowrap; }
+  .btn-connect:hover { background: #d97706; }
+  .btn-demo { background: transparent; border: 1.5px solid #f59e0b; color: #92400e; border-radius: 7px; padding: 7px 12px; cursor: pointer; font-size: 0.83rem; white-space: nowrap; }
+  .btn-demo:hover { background: #fef3c7; }
+
+  /* AI Search Panel */
+  .ai-panel {
+    background: linear-gradient(135deg, #1e1b4b 0%, #1a56db 100%);
+    padding: 16px 28px; color: white;
+  }
+  .ai-panel-inner { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; max-width: 900px; }
+  .ai-panel label { font-size: 0.75rem; font-weight: 700; opacity: 0.8; display: block; margin-bottom: 4px; letter-spacing: 0.05em; }
+  .ai-input-group { flex: 1; min-width: 200px; }
+  .ai-input-group input, .ai-input-group select {
+    width: 100%; border: 1.5px solid rgba(255,255,255,0.3); border-radius: 8px;
+    padding: 8px 12px; font-size: 0.9rem; background: rgba(255,255,255,0.12);
+    color: white; outline: none; transition: border-color 0.15s;
+    font-family: inherit;
+  }
+  .ai-input-group input::placeholder { color: rgba(255,255,255,0.5); }
+  .ai-input-group input:focus, .ai-input-group select:focus { border-color: rgba(255,255,255,0.7); }
+  .ai-input-group select option { background: #1e1b4b; color: white; }
+  .btn-ai-search {
+    background: white; color: #1a56db; border: none; border-radius: 8px;
+    padding: 9px 18px; cursor: pointer; font-weight: 700; font-size: 0.9rem;
+    display: flex; align-items: center; gap: 6px; white-space: nowrap;
+    transition: all 0.15s;
+  }
+  .btn-ai-search:hover { background: #e8f0fe; }
+  .btn-ai-search:disabled { opacity: 0.5; cursor: not-allowed; }
+  .ai-status { font-size: 0.8rem; opacity: 0.75; margin-top: 8px; }
+  .ai-status a { color: rgba(255,255,255,0.7); font-size: 0.75rem; }
+
+  /* AI Results */
+  .ai-results {
+    display: none; background: #f0f9ff; border-bottom: 2px solid #38bdf8;
+    padding: 16px 28px;
+  }
+  .ai-results.show { display: block; }
+  .ai-results h3 { font-size: 0.9rem; font-weight: 700; color: #0369a1; margin-bottom: 12px; }
+  .ai-result-card {
+    background: white; border: 1px solid #bae6fd; border-radius: 10px;
+    padding: 14px 16px; margin-bottom: 10px; position: relative;
+  }
+  .ai-result-card h4 { font-size: 0.95rem; font-weight: 600; margin-bottom: 6px; }
+  .ai-result-card .meta { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 6px; display: flex; flex-wrap: wrap; gap: 10px; }
+  .ai-result-card p { font-size: 0.85rem; line-height: 1.6; color: var(--text); margin-bottom: 8px; }
+  .ai-result-card .evidence { font-size: 0.82rem; background: #f0fdf4; border-left: 3px solid #0e9f6e; padding: 8px 10px; border-radius: 0 6px 6px 0; line-height: 1.5; }
+  .source-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px;
+    padding: 3px 8px; font-size: 0.78rem; color: #1d4ed8; text-decoration: none;
+    margin-top: 6px; transition: background 0.1s;
+  }
+  .source-pill:hover { background: #dbeafe; }
+  .btn-save-sheet {
+    position: absolute; top: 12px; right: 12px;
+    background: var(--secondary); color: white; border: none; border-radius: 6px;
+    padding: 5px 12px; cursor: pointer; font-size: 0.8rem; font-weight: 600;
+    transition: background 0.15s;
+  }
+  .btn-save-sheet:hover { background: #0b7a57; }
+  .btn-save-sheet:disabled { background: #9ca3af; cursor: not-allowed; }
+  .btn-save-all { background: var(--secondary); color: white; border: none; border-radius: 8px;
+    padding: 8px 16px; cursor: pointer; font-size: 0.88rem; font-weight: 600; margin-top: 8px; }
+  .ai-thinking { display: flex; align-items: center; gap: 10px; padding: 20px 0; color: #0369a1; font-size: 0.9rem; }
+  .dots { display: flex; gap: 4px; }
+  .dots span { width: 7px; height: 7px; background: #38bdf8; border-radius: 50%; animation: bounce 1s infinite; }
+  .dots span:nth-child(2) { animation-delay: 0.15s; }
+  .dots span:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes bounce { 0%,80%,100%{transform:scale(0.7)} 40%{transform:scale(1)} }
+
+  /* Controls */
+  .controls {
+    background: white; border-bottom: 1px solid var(--border);
+    padding: 10px 28px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+  }
+  .search-box {
+    flex: 1; min-width: 180px; display: flex; align-items: center; gap: 7px;
+    border: 1.5px solid var(--border); border-radius: 8px;
+    padding: 7px 10px; background: var(--bg);
+  }
+  .search-box input { border: none; background: transparent; outline: none; width: 100%; font-size: 0.9rem; }
+  select.ctrl-select {
+    border: 1.5px solid var(--border); border-radius: 8px;
+    padding: 7px 10px; font-size: 0.85rem; background: var(--bg);
+    cursor: pointer; outline: none;
+  }
+  .view-toggle { display: flex; gap: 3px; }
+  .view-btn { padding: 6px 11px; border: 1.5px solid var(--border); background: var(--bg); border-radius: 6px; cursor: pointer; font-size: 0.82rem; transition: all 0.15s; }
+  .view-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+  .btn-icon { background: var(--tag-bg); border: 1.5px solid var(--border); border-radius: 8px; padding: 6px 10px; cursor: pointer; font-size: 0.88rem; }
+  .btn-icon:hover { background: var(--primary-light); }
+  .btn-add-sheet { background: var(--secondary); color: white; border: none; border-radius: 8px; padding: 7px 12px; cursor: pointer; font-size: 0.85rem; font-weight: 600; text-decoration: none; white-space: nowrap; }
+  .btn-add-sheet:hover { background: #0b7a57; }
+
+  /* Main layout */
+  .main { display: flex; }
+  .sidebar {
+    width: 200px; min-width: 200px; padding: 14px 12px;
+    border-right: 1px solid var(--border); background: white;
+    height: calc(100vh - 200px); overflow-y: auto; position: sticky; top: 48px;
+  }
+  .sidebar h3 { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 7px; margin-top: 14px; }
+  .sidebar h3:first-child { margin-top: 0; }
+  .filter-item { display: flex; align-items: center; gap: 7px; padding: 4px 6px; border-radius: 5px; cursor: pointer; font-size: 0.83rem; transition: background 0.1s; user-select: none; }
+  .filter-item:hover { background: var(--primary-light); }
+  .filter-item input[type=checkbox] { accent-color: var(--primary); flex-shrink: 0; }
+  .filter-count { margin-left: auto; background: var(--tag-bg); border-radius: 10px; padding: 1px 6px; font-size: 0.73rem; color: var(--text-muted); }
+
+  /* Content */
+  .content { flex: 1; padding: 18px 22px; overflow: auto; min-width: 0; }
+  .summary-bar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+  .summary-card { flex: 1; min-width: 110px; background: white; border: 1px solid var(--border); border-radius: 10px; padding: 11px 13px; }
+  .summary-card .num { font-size: 1.5rem; font-weight: 700; color: var(--primary); }
+  .summary-card .label { font-size: 0.75rem; color: var(--text-muted); margin-top: 1px; }
+
+  /* Cards */
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 13px; }
+  .policy-card { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 15px; cursor: pointer; transition: all 0.15s; display: flex; flex-direction: column; gap: 8px; }
+  .policy-card:hover { border-color: var(--primary); box-shadow: 0 4px 14px rgba(26,86,219,0.1); transform: translateY(-1px); }
+  .card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+  .card-title { font-size: 0.93rem; font-weight: 600; line-height: 1.4; }
+  .tags { display: flex; flex-wrap: wrap; gap: 4px; }
+  .tag { font-size: 0.71rem; padding: 2px 7px; border-radius: 10px; font-weight: 500; }
+  .tag-cat { background: #ede9fe; color: #6d28d9; }
+  .tag-country { background: #fef3c7; color: #92400e; }
+  .card-budget { font-size: 0.8rem; color: var(--text-muted); }
+  .card-budget strong { color: var(--text); }
+  .card-desc { font-size: 0.78rem; color: var(--text-muted); line-height: 1.5; }
+  .ev-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 0.72rem; padding: 2px 7px; border-radius: 5px; font-weight: 500; }
+  .ev-high { background: #dcfce7; color: #15803d; }
+  .ev-medium { background: #fef3c7; color: #92400e; }
+  .ev-low { background: #fee2e2; color: #991b1b; }
+  .ev-na { background: var(--tag-bg); color: var(--text-muted); }
+
+  /* Table */
+  .table-wrapper { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
+  th { background: #f8fafc; font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; cursor: pointer; user-select: none; }
+  th:hover { background: var(--primary-light); }
+  td { padding: 10px 12px; font-size: 0.84rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--primary-light); cursor: pointer; }
+
+  /* Modal */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1000; align-items: center; justify-content: center; padding: 16px; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: white; border-radius: 16px; width: 100%; max-width: 680px; max-height: 90vh; overflow-y: auto; padding: 24px 26px; position: relative; }
+  .modal-close { position: absolute; top: 14px; right: 14px; background: var(--tag-bg); border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-size: 0.95rem; display: flex; align-items: center; justify-content: center; }
+  .modal h2 { font-size: 1.1rem; font-weight: 700; margin-bottom: 14px; line-height: 1.4; }
+  .detail-section { margin-top: 14px; }
+  .detail-section h4 { font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 7px; }
+  .detail-row { display: grid; grid-template-columns: 115px 1fr; gap: 6px; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 0.87rem; }
+  .detail-row .key { color: var(--text-muted); font-weight: 500; }
+  .evidence-box { background: #f0fdf4; border-left: 3px solid var(--secondary); padding: 10px 12px; border-radius: 0 7px 7px 0; font-size: 0.85rem; line-height: 1.65; }
+
+  /* Source section in modal */
+  .source-section { margin-top: 12px; }
+  .source-card {
+    display: flex; align-items: center; gap: 10px;
+    border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px;
+    text-decoration: none; color: var(--text); transition: all 0.15s;
+    margin-top: 8px;
+  }
+  .source-card:hover { border-color: var(--primary); background: var(--primary-light); }
+  .source-card .icon { font-size: 1.2rem; flex-shrink: 0; }
+  .source-card .info { flex: 1; min-width: 0; }
+  .source-card .info .title { font-size: 0.88rem; font-weight: 600; color: var(--primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .source-card .info .url { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .source-card .arrow { color: var(--primary); flex-shrink: 0; }
+
+  /* Loading / empty */
+  .loading { text-align: center; padding: 50px 20px; color: var(--text-muted); }
+  .spinner { width: 34px; height: 34px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .no-results { text-align: center; padding: 40px 20px; color: var(--text-muted); }
+  .error-box { background: #fef2f2; border: 1px solid #fca5a5; border-radius: 10px; padding: 14px 18px; color: #991b1b; font-size: 0.86rem; line-height: 1.6; margin: 12px 28px; }
+
+  /* Setup guide */
+  .setup-guide { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 22px 26px; max-width: 580px; margin: 32px auto; }
+  .setup-guide h2 { font-size: 1.05rem; margin-bottom: 14px; }
+  .step { display: flex; gap: 10px; margin-bottom: 13px; }
+  .step-num { background: var(--primary); color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+  .step-body { font-size: 0.86rem; line-height: 1.6; }
+  .step-body strong { color: var(--primary); }
+  code { background: var(--tag-bg); padding: 1px 5px; border-radius: 4px; font-size: 0.82rem; font-family: monospace; }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 24px; right: 24px; background: #1e293b; color: white; padding: 10px 18px; border-radius: 8px; font-size: 0.88rem; z-index: 9999; opacity: 0; transform: translateY(10px); transition: all 0.3s; pointer-events: none; }
+  .toast.show { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🏛️ 人口減少対策 政策データベース</h1>
+  <p>国内外の少子化・人口減少対策の具体例・予算・エビデンスを集積・比較分析するツール</p>
+  <div class="header-meta">
+    <span class="stat-chip" id="total-count">-</span>
+    <span class="stat-chip" id="country-count"></span>
+    <span class="stat-chip" id="category-count"></span>
+    <span class="sheet-status" id="sheet-status"></span>
+  </div>
+</header>
+
+<!-- Sheet URL banner -->
+<div class="setup-banner" id="setupBanner" style="display:none;">
+  <span>📋 GoogleスプレッドシートのCSV公開URLを入力</span>
+  <input type="text" id="sheetUrlInput" placeholder="https://docs.google.com/spreadsheets/d/.../pub?output=csv">
+  <button class="btn-connect" onclick="connectSheet()">接続する</button>
+  <button class="btn-demo" onclick="loadDemoData()">デモで試す</button>
+</div>
+
+<div id="errorBox" style="display:none;"></div>
+
+<!-- AI Search Panel -->
+<div class="ai-panel" id="aiPanel" style="display:none;">
+  <div class="ai-panel-inner">
+    <div class="ai-input-group">
+      <label>📂 分野・カテゴリー</label>
+      <select id="aiCategory">
+        <option value="">すべて</option>
+        <option>経済的支援</option>
+        <option>保育・教育</option>
+        <option>働き方改革</option>
+        <option>移住・地方創生</option>
+        <option>住宅支援</option>
+        <option>医療・健康</option>
+        <option>総合パッケージ</option>
+      </select>
+    </div>
+    <div class="ai-input-group" style="flex:2">
+      <label>🔍 キーワード（例：父親育休、自治体、フランス）</label>
+      <input type="text" id="aiKeyword" placeholder="調べたい政策のキーワードを入力..." onkeydown="if(event.key==='Enter')doAiSearch()">
+    </div>
+    <div>
+      <label style="visibility:hidden">btn</label>
+      <button class="btn-ai-search" id="btnAiSearch" onclick="doAiSearch()">
+        ✨ AIで事例を検索
+      </button>
+    </div>
+  </div>
+  <div class="ai-status" id="aiStatus">
+    AIが国内外の政策事例をリサーチして構造化データとして返します。
+    <a href="#" onclick="showWorkerSetup(event)">⚙️ API設定</a>
+  </div>
+</div>
+
+<!-- AI Results -->
+<div class="ai-results" id="aiResults">
+  <div id="aiResultsInner"></div>
+</div>
+
+<!-- Controls -->
+<div class="controls" id="mainControls" style="display:none;">
+  <div class="search-box">
+    <span>🔍</span>
+    <input type="text" id="searchInput" placeholder="政策名・キーワードで検索..." oninput="applyFilters()">
+  </div>
+  <select class="ctrl-select" id="sortSelect" onchange="applyFilters()">
+    <option value="id">登録順</option>
+    <option value="year_desc">年度（新しい順）</option>
+    <option value="evidence">エビデンス強度</option>
+  </select>
+  <a id="addLink" href="#" target="_blank" class="btn-add-sheet">✏️ シートで追加</a>
+  <button class="btn-icon" onclick="reloadData()" title="再読み込み">🔄</button>
+  <button class="btn-icon" onclick="toggleSetupBanner()" title="設定">⚙️</button>
+  <div class="view-toggle">
+    <button class="view-btn active" id="cardViewBtn" onclick="setView('card')">🃏</button>
+    <button class="view-btn" id="tableViewBtn" onclick="setView('table')">📋</button>
+  </div>
+</div>
+
+<div class="main" id="mainLayout" style="display:none;">
+  <div class="sidebar">
+    <h3>カテゴリー</h3>
+    <div id="categoryFilters"></div>
+    <h3>地域・国</h3>
+    <div id="regionFilters"></div>
+    <h3>エビデンス強度</h3>
+    <div id="evidenceFilters">
+      <label class="filter-item"><input type="checkbox" value="高" onchange="applyFilters()"> <span>高</span><span class="filter-count" id="ev-high-count">-</span></label>
+      <label class="filter-item"><input type="checkbox" value="中" onchange="applyFilters()"> <span>中</span><span class="filter-count" id="ev-med-count">-</span></label>
+      <label class="filter-item"><input type="checkbox" value="低" onchange="applyFilters()"> <span>低</span><span class="filter-count" id="ev-low-count">-</span></label>
+      <label class="filter-item"><input type="checkbox" value="調査中" onchange="applyFilters()"> <span>調査中</span><span class="filter-count" id="ev-na-count">-</span></label>
+    </div>
+    <h3>実施状況</h3>
+    <div id="statusFilters">
+      <label class="filter-item"><input type="checkbox" value="実施中" onchange="applyFilters()"> 実施中</label>
+      <label class="filter-item"><input type="checkbox" value="予定" onchange="applyFilters()"> 予定</label>
+      <label class="filter-item"><input type="checkbox" value="完了" onchange="applyFilters()"> 完了</label>
+      <label class="filter-item"><input type="checkbox" value="検討中" onchange="applyFilters()"> 検討中</label>
+    </div>
+  </div>
+
+  <div class="content">
+    <div id="loadingBox" class="loading"><div class="spinner"></div><p>データを読み込み中...</p></div>
+    <div id="dataContent" style="display:none;">
+      <div class="summary-bar">
+        <div class="summary-card"><div class="num" id="s-total">-</div><div class="label">政策数</div></div>
+        <div class="summary-card"><div class="num" id="s-japan">-</div><div class="label">国内政策</div></div>
+        <div class="summary-card"><div class="num" id="s-overseas">-</div><div class="label">海外事例</div></div>
+        <div class="summary-card"><div class="num" id="s-highev">-</div><div class="label">エビデンス強</div></div>
+      </div>
+      <div id="cardView" class="card-grid"></div>
+      <div id="tableView" class="table-wrapper" style="display:none;">
+        <table>
+          <thead><tr>
+            <th onclick="setSortCol('name')">政策名</th>
+            <th onclick="setSortCol('category')">カテゴリー</th>
+            <th onclick="setSortCol('region')">地域・国</th>
+            <th onclick="setSortCol('year')">開始年</th>
+            <th>予算規模</th>
+            <th onclick="setSortCol('evidence_level')">エビデンス</th>
+            <th onclick="setSortCol('status')">状況</th>
+          </tr></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+      <div class="no-results" id="noResults" style="display:none;"><p style="font-size:1.4rem">🔎</p><p style="margin-top:8px">条件に一致する政策が見つかりません</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- Setup guide -->
+<div id="setupGuide" style="padding:16px 28px; display:none;">
+  <div class="setup-guide">
+    <h2>🚀 セットアップガイド</h2>
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body"><strong>Googleスプレッドシートを作成</strong><br>デモCSVをインポートして列構造を確認してください。</div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body"><strong>「ファイル → ウェブに公開」でCSV公開URL取得</strong><br>形式：<code>https://docs.google.com/spreadsheets/d/.../pub?output=csv</code></div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body"><strong>GitHubにindex.htmlをアップロード → Pages設定</strong></div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body"><strong>AI検索を使うにはCloudflare Workerをデプロイ</strong><br>セットアップ手順.mdを参照してください。</div>
+    </div>
+    <div style="margin-top:16px;display:flex;gap:8px;">
+      <button class="btn-connect" onclick="toggleSetupBanner()">URLを入力する</button>
+      <button class="btn-demo" onclick="loadDemoData()">デモデータで試す</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div id="modalContent"></div>
+  </div>
+</div>
+
+<!-- Worker Setup Modal -->
+<div class="modal-overlay" id="workerModal" onclick="closeWorkerModal(event)">
+  <div class="modal" style="max-width:500px;">
+    <button class="modal-close" onclick="closeWorkerModal()">✕</button>
+    <h2>⚙️ AI検索の設定</h2>
+    <p style="font-size:0.88rem;color:var(--text-muted);margin:12px 0 16px;">Cloudflare WorkerのURLと認証トークン、スプレッドシートへの書き込み用Google Apps Script URLを設定します。</p>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div>
+        <label style="font-size:0.8rem;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px;">Cloudflare Worker URL（AI検索用）</label>
+        <input type="text" id="workerUrlInput" placeholder="https://your-worker.workers.dev" style="width:100%;border:1.5px solid var(--border);border-radius:7px;padding:8px 10px;font-size:0.88rem;outline:none;">
+        <p style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;">設定しない場合、AI検索は利用できません</p>
+      </div>
+      <div style="background:#fffbeb;border:1.5px solid #f59e0b;border-radius:8px;padding:12px;">
+        <label style="font-size:0.8rem;font-weight:700;color:#92400e;display:block;margin-bottom:4px;">🔑 認証トークン（AI検索の合言葉）</label>
+        <div style="display:flex;gap:6px;">
+          <input type="password" id="searchTokenInput" placeholder="Cloudflareに設定したSEARCH_TOKENと同じ値" style="flex:1;border:1.5px solid #f59e0b;border-radius:7px;padding:8px 10px;font-size:0.88rem;outline:none;">
+          <button onclick="toggleTokenVisibility()" style="border:1.5px solid #f59e0b;border-radius:7px;padding:6px 10px;background:white;cursor:pointer;font-size:0.88rem;" title="表示/非表示">👁</button>
+        </div>
+        <p style="font-size:0.75rem;color:#92400e;margin-top:5px;">このトークンを知っている人だけがAI検索を使えます。ブラウザのローカルストレージに保存されます。</p>
+      </div>
+      <div>
+        <label style="font-size:0.8rem;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px;">Google Apps Script URL（シート書き込み用）</label>
+        <input type="text" id="gasUrlInput" placeholder="https://script.google.com/macros/s/.../exec" style="width:100%;border:1.5px solid var(--border);border-radius:7px;padding:8px 10px;font-size:0.88rem;outline:none;">
+        <p style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;">設定しない場合、AI検索結果をシートに保存できません</p>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px;">
+      <button class="btn-connect" onclick="saveWorkerSettings()">保存する</button>
+      <button class="btn-demo" onclick="closeWorkerModal()">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== CONFIG =====
+const SK_SHEET = 'pdb_sheet_url';
+const SK_WORKER = 'pdb_worker_url';
+const SK_GAS = 'pdb_gas_url';
+const SK_TOKEN = 'pdb_search_token';
+
+let sheetUrl = localStorage.getItem(SK_SHEET) || '';
+let workerUrl = localStorage.getItem(SK_WORKER) || '';
+let gasUrl = localStorage.getItem(SK_GAS) || '';
+let searchToken = localStorage.getItem(SK_TOKEN) || '';
+let policies = [];
+let currentView = 'card';
+let sortCol = null;
+let sortDir = 1;
+let isDemo = false;
+
+// ===== DEMO DATA =====
+const DEMO_POLICIES = [
+  {id:1,name:"こども・子育て支援加速化プラン",category:"総合パッケージ",region:"日本（全国）",year:"2024",status:"実施中",budget:"3.6兆円（2024〜2026年度）",budget_source:"国費・子育て支援金",description:"2024〜2026年度の3年間を集中取組期間として設定。児童手当拡充、保育拡充、育児休業推進、高等教育費負担軽減など幅広い施策を束ねた総合パッケージ。",evidence_level:"中",evidence_text:"包括的な政策パッケージのため個別効果測定は困難。政府は2030年代初頭までに少子化トレンドを反転させることを目標とする。",tags:"少子化,子育て,政府方針",source:"https://www.cas.go.jp/jp/seisaku/kodomo_mirai/pdf/kakugikettei_20231222.pdf",source_label:"内閣官房「こども未来戦略」"},
+  {id:2,name:"児童手当の抜本的拡充",category:"経済的支援",region:"日本（全国）",year:"2024",status:"実施中",budget:"約1兆円超（年間）",budget_source:"国費・地方費・事業主拠出",description:"2024年10月分から実施。所得制限完全撤廃、支給期間を高校生年代まで延長、第3子以降は月額3万円に倍増。",evidence_level:"中",evidence_text:"OECD等の研究では児童手当の充実が出生率に正の影響（出生率0.01〜0.05程度）。日本での効果は実証研究待ち。",tags:"児童手当,経済支援,多子世帯",source:"https://www.cfa.go.jp/",source_label:"こども家庭庁"},
+  {id:3,name:"保育所等の職員配置基準改善",category:"保育・教育",region:"日本（全国）",year:"2024",status:"実施中",budget:"数百億円規模（年間）",budget_source:"国費・地方費",description:"4・5歳児の保育士配置基準を30人→25人に改善（約70年ぶり）。2025年度から1歳児も6人→5人に改善。",evidence_level:"高",evidence_text:"RIETI研究：保育定員100%増→年間出生率約9%増。1990〜2020年の保育定員70%増により合計特殊出生率を0.097ポイント引き上げると推計（山口慎太郎 東京大学）。",tags:"保育,配置基準,質の向上",source:"https://www.cas.go.jp/jp/seisaku/kodomo_seisaku_kyouka/dai2/siryou2.pdf",source_label:"内閣府「子ども・子育てへの経済的支援」山口慎太郎"},
+  {id:4,name:"神山町 ITサテライトオフィス誘致・移住促進",category:"移住・地方創生",region:"徳島県神山町",year:"2011",status:"実施中",budget:"数億円（オフィス補助・通信インフラ整備）",budget_source:"国・県・町費",description:"高速ブロードバンド整備を基盤に、IT系企業のサテライトオフィス誘致。オフィス開設・運営費補助、逆指名移住制度を展開。",evidence_level:"高",evidence_text:"40社が36拠点進出（2016年時点）。2016年4〜9月だけで156世帯234名が移住、60名以上の地元雇用創出。",tags:"IT,移住,サテライトオフィス,地方創生",source:"https://www.chisou.go.jp/sousei/pdf/ijyu-jirei-1.pdf",source_label:"内閣府地方創生「移住・定住施策の優良事例集」"},
+  {id:5,name:"上士幌町 子育て支援総合パッケージ",category:"総合パッケージ",region:"北海道上士幌町",year:"2015",status:"実施中",budget:"年間数億円（人口比で大規模）",budget_source:"町費・ふるさと納税",description:"18歳まで医療費完全無料、保育料無償化、第2子以降出産時100万円支給、全戸訪問、無料職業紹介。ふるさと納税を財源に展開。",evidence_level:"高",evidence_text:"合計特殊出生率が北海道平均（約1.2）を大幅上回る。移住者急増、人口の社会増が転入超過に転じた。",tags:"医療費無料,100万円支給,保育無償,ふるさと納税",source:"https://machiage.microad.jp/blog/39-population-decline",source_label:"人口減少対策・自治体事例"},
+  {id:6,name:"フランス 家族政策（Politique familiale）",category:"総合パッケージ",region:"フランス",year:"1945",status:"実施中",budget:"GDP比約2.9%（約800億ユーロ/年）",budget_source:"社会保障財源・国費",description:"家族給付（第3子以上に厚い多子加算）、公立保育整備、育児休業・時短勤務制度、高校まで無償の公教育。1990年代以降は保育拡充にシフト。",evidence_level:"高",evidence_text:"2020年の合計特殊出生率：1.83（EU内最高水準）。GDP比2.9%の支出は日本（1.6%）の約2倍。",tags:"フランス,海外事例,多子加算,保育",source:"https://www5.cao.go.jp/keizai-shimon/kaigi/special/future/sentaku/s3_1_6.html",source_label:"内閣府「少子化対策に成功している海外の事例」"},
+  {id:7,name:"スウェーデン 両親保険（Föräldrapenning）",category:"働き方改革",region:"スウェーデン",year:"1974",status:"実施中",budget:"GDP比約3.4%（少子化対策全体）",budget_source:"社会保険財源",description:"1974年に世界初の両性が取得できる育児休業の収入補填制度を導入。子ども1人につき最大480日・所得の最大80%を保障。パパクォータで父親育休を促進。",evidence_level:"高",evidence_text:"合計特殊出生率1.66（2020年）。父親の育休取得率が約90%に達し、女性の就業継続と出産の両立を実現。",tags:"スウェーデン,海外事例,育休,父親育休",source:"https://www.dlri.co.jp/report/dlri/279920.html",source_label:"第一生命経済研究所「スウェーデンの少子化対策から学ぶ」"},
+  {id:8,name:"韓国 出生奨励金（急進的強化）",category:"経済的支援",region:"韓国",year:"2024",status:"実施中",budget:"子ども1人あたり最大約7万ドル相当を検討",budget_source:"国・地方費",description:"出生率0.72（2023年）への緊急対応。出生時の奨励金を大幅拡充。2006年以降、累計約30兆円を投入してきたが効果は限定的。",evidence_level:"低",evidence_text:"2006年以降の巨額投資にもかかわらず出生率は世界最低水準に低下し続けている。現金給付中心の政策の効果に疑問符。",tags:"韓国,海外事例,奨励金,反面教師",source:"https://business.nikkei.com/atcl/NBD/19/world/00649/",source_label:"日経ビジネス「世界各国で少子化対策が失敗する理由」"},
+];
+
+// ===== CSV PARSER =====
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  if (lines.length < 2) return [];
+  const headers = parseCSVLine(lines[0]);
+  return lines.slice(1).filter(l=>l.trim()).map((line,i) => {
+    const vals = parseCSVLine(line);
+    const obj = {};
+    headers.forEach((h,idx) => { obj[h.trim()] = (vals[idx]||'').trim(); });
+    obj.id = obj.id || i+1;
+    return obj;
+  }).filter(p => p.name);
+}
+
+function parseCSVLine(line) {
+  const result = []; let inQ = false, cur = '';
+  for (let i=0;i<line.length;i++) {
+    const c = line[i];
+    if (c==='"') { if(inQ&&line[i+1]==='"'){cur+='"';i++;}else inQ=!inQ; }
+    else if (c===','&&!inQ) { result.push(cur); cur=''; }
+    else cur+=c;
+  }
+  result.push(cur);
+  return result;
+}
+
+// ===== INIT =====
+function init() {
+  document.getElementById('workerUrlInput').value = workerUrl;
+  document.getElementById('gasUrlInput').value = gasUrl;
+  document.getElementById('searchTokenInput').value = searchToken;
+  if (sheetUrl) {
+    document.getElementById('sheetUrlInput').value = sheetUrl;
+    showMain(); loadFromSheet(sheetUrl);
+  } else {
+    showSetupGuide();
+  }
+}
+
+function showSetupGuide() {
+  document.getElementById('setupBanner').style.display = 'flex';
+  document.getElementById('setupGuide').style.display = 'block';
+  document.getElementById('mainControls').style.display = 'none';
+  document.getElementById('mainLayout').style.display = 'none';
+  document.getElementById('aiPanel').style.display = 'none';
+}
+
+function showMain() {
+  document.getElementById('setupGuide').style.display = 'none';
+  document.getElementById('setupBanner').style.display = 'none';
+  document.getElementById('mainControls').style.display = 'flex';
+  document.getElementById('mainLayout').style.display = 'flex';
+  document.getElementById('aiPanel').style.display = 'block';
+  document.getElementById('loadingBox').style.display = 'block';
+  document.getElementById('dataContent').style.display = 'none';
+}
+
+function toggleSetupBanner() {
+  const b = document.getElementById('setupBanner');
+  b.style.display = b.style.display==='none' ? 'flex' : 'none';
+}
+
+function connectSheet() {
+  const url = document.getElementById('sheetUrlInput').value.trim();
+  if (!url.startsWith('http')) { alert('有効なURLを入力してください'); return; }
+  sheetUrl = url; localStorage.setItem(SK_SHEET, url);
+  isDemo = false; showMain(); loadFromSheet(url);
+}
+
+async function loadFromSheet(url) {
+  document.getElementById('errorBox').style.display = 'none';
+  document.getElementById('loadingBox').style.display = 'block';
+  document.getElementById('dataContent').style.display = 'none';
+  try {
+    const res = await fetch(url, {cache:'no-cache'});
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    const parsed = parseCSV(text);
+    if (parsed.length===0) throw new Error('データが見つかりません。列名を確認してください。');
+    policies = parsed;
+    const editUrl = url.replace('/pub?','/#').split('#')[0];
+    document.getElementById('addLink').href = editUrl;
+    document.getElementById('sheet-status').textContent = `✅ 接続済み（${new Date().toLocaleTimeString('ja-JP')}更新）`;
+    buildFilters(); applyFilters();
+    document.getElementById('loadingBox').style.display = 'none';
+    document.getElementById('dataContent').style.display = 'block';
+    updateHeaderStats();
+  } catch(e) {
+    document.getElementById('loadingBox').style.display = 'none';
+    document.getElementById('errorBox').style.display = 'block';
+    document.getElementById('errorBox').innerHTML = `<div class="error-box">⚠️ 読み込み失敗：${e.message}<br><a href="#" onclick="loadDemoData()" style="color:var(--primary)">→ デモデータで試す</a></div>`;
+    document.getElementById('mainControls').style.display = 'flex';
+    document.getElementById('mainLayout').style.display = 'flex';
+    document.getElementById('aiPanel').style.display = 'block';
+  }
+}
+
+function loadDemoData() {
+  isDemo = true; policies = DEMO_POLICIES;
+  document.getElementById('setupBanner').style.display = 'none';
+  document.getElementById('setupGuide').style.display = 'none';
+  document.getElementById('mainControls').style.display = 'flex';
+  document.getElementById('mainLayout').style.display = 'flex';
+  document.getElementById('aiPanel').style.display = 'block';
+  document.getElementById('loadingBox').style.display = 'none';
+  document.getElementById('dataContent').style.display = 'block';
+  document.getElementById('sheet-status').textContent = '⭐ デモデータ表示中';
+  buildFilters(); applyFilters(); updateHeaderStats();
+}
+
+function reloadData() {
+  if (isDemo) { loadDemoData(); return; }
+  if (sheetUrl) loadFromSheet(sheetUrl);
+}
+
+// ===== AI SEARCH =====
+async function doAiSearch() {
+  const keyword = document.getElementById('aiKeyword').value.trim();
+  const category = document.getElementById('aiCategory').value;
+  if (!keyword && !category) { alert('キーワードまたはカテゴリーを入力してください'); return; }
+  if (!workerUrl) {
+    showWorkerSetup(null);
+    showToast('⚙️ まずAI検索のURLを設定してください');
+    return;
+  }
+  if (!searchToken) {
+    showWorkerSetup(null);
+    showToast('🔑 認証トークンを設定してください');
+    return;
+  }
+
+  const btn = document.getElementById('btnAiSearch');
+  btn.disabled = true; btn.textContent = '🔄 検索中...';
+  document.getElementById('aiStatus').textContent = 'AIが政策事例をリサーチしています...';
+  document.getElementById('aiResults').classList.add('show');
+  document.getElementById('aiResultsInner').innerHTML = `
+    <div class="ai-thinking">
+      <div class="dots"><span></span><span></span><span></span></div>
+      <span>「${category||''}${keyword}」に関する政策事例を調べています...</span>
+    </div>`;
+
+  try {
+    const res = await fetch(workerUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${searchToken}`
+      },
+      body: JSON.stringify({ keyword, category })
+    });
+
+    // 認証エラーを個別ハンドリング
+    if (res.status === 401) {
+      const errData = await res.json().catch(() => ({}));
+      document.getElementById('aiResultsInner').innerHTML =
+        `<div class="error-box">🔑 認証エラー：${errData.error || 'トークンが正しくありません'}<br>⚙️設定画面でトークンを確認してください。</div>`;
+      document.getElementById('aiStatus').textContent = '❌ 認証失敗';
+      return;
+    }
+    if (!res.ok) throw new Error(`Worker error: ${res.status}`);
+
+    const data = await res.json();
+    renderAiResults(data.results || []);
+    document.getElementById('aiStatus').textContent = `✅ ${data.results?.length || 0}件の事例が見つかりました`;
+  } catch(e) {
+    document.getElementById('aiResultsInner').innerHTML =
+      `<div class="error-box">⚠️ 検索に失敗しました：${e.message}<br>Cloudflare WorkerのURLを確認してください。</div>`;
+    document.getElementById('aiStatus').textContent = '❌ 検索失敗';
+  } finally {
+    btn.disabled = false; btn.innerHTML = '✨ AIで事例を検索';
+  }
+}
+
+function renderAiResults(results) {
+  if (results.length === 0) {
+    document.getElementById('aiResultsInner').innerHTML = '<p style="color:var(--text-muted);font-size:0.9rem">該当する事例が見つかりませんでした。別のキーワードをお試しください。</p>';
+    return;
+  }
+  const canSave = !!gasUrl;
+  document.getElementById('aiResultsInner').innerHTML = `
+    <h3>🔍 AI検索結果（${results.length}件）　検索結果を確認してシートに保存してください</h3>
+    ${results.map((r,i) => `
+      <div class="ai-result-card">
+        ${canSave ? `<button class="btn-save-sheet" onclick="saveToSheet(${i})" data-idx="${i}">📊 シートに保存</button>` : ''}
+        <h4>${r.name}</h4>
+        <div class="meta">
+          <span>📂 ${r.category||'-'}</span>
+          <span>📍 ${r.region||'-'}</span>
+          <span>📅 ${r.year||'-'}年〜</span>
+          <span>💰 ${r.budget||'-'}</span>
+          <span>${evBadge(r.evidence_level||'調査中')}</span>
+        </div>
+        <p>${r.description||''}</p>
+        ${r.evidence_text ? `<div class="evidence">${r.evidence_text}</div>` : ''}
+        ${r.source ? `<a class="source-pill" href="${r.source}" target="_blank">🔗 ${r.source_label||r.source}</a>` : ''}
+      </div>`).join('')}
+    ${canSave ? `<button class="btn-save-all" onclick="saveAllToSheet()">📊 すべてシートに保存（${results.length}件）</button>` : '<p style="font-size:0.82rem;color:var(--text-muted);margin-top:8px">💡 Google Apps ScriptのURLを設定するとシートへの自動保存が使えます</p>'}
+  `;
+  window._aiResults = results;
+}
+
+async function saveToSheet(idx) {
+  if (!gasUrl) { showToast('Google Apps Script URLを設定してください'); return; }
+  const item = window._aiResults[idx];
+  const btn = document.querySelector(`[data-idx="${idx}"]`);
+  btn.disabled = true; btn.textContent = '保存中...';
+  try {
+    await postToGas([item]);
+    btn.textContent = '✅ 保存済み';
+    showToast('✅ シートに保存しました');
+  } catch(e) {
+    btn.disabled = false; btn.textContent = '📊 シートに保存';
+    showToast('❌ 保存に失敗しました');
+  }
+}
+
+async function saveAllToSheet() {
+  if (!gasUrl || !window._aiResults) return;
+  try {
+    await postToGas(window._aiResults);
+    showToast(`✅ ${window._aiResults.length}件をシートに保存しました`);
+    setTimeout(() => reloadData(), 2000);
+  } catch(e) {
+    showToast('❌ 保存に失敗しました');
+  }
+}
+
+async function postToGas(items) {
+  const res = await fetch(gasUrl, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ policies: items })
+  });
+  if (!res.ok) throw new Error(`GAS error: ${res.status}`);
+  return res.json();
+}
+
+// ===== WORKER SETTINGS =====
+function showWorkerSetup(e) {
+  if (e) e.preventDefault();
+  document.getElementById('workerModal').classList.add('open');
+}
+function closeWorkerModal(e) {
+  if (!e || e.target===document.getElementById('workerModal'))
+    document.getElementById('workerModal').classList.remove('open');
+}
+function saveWorkerSettings() {
+  workerUrl = document.getElementById('workerUrlInput').value.trim();
+  gasUrl = document.getElementById('gasUrlInput').value.trim();
+  searchToken = document.getElementById('searchTokenInput').value.trim();
+  if (workerUrl) localStorage.setItem(SK_WORKER, workerUrl);
+  if (gasUrl) localStorage.setItem(SK_GAS, gasUrl);
+  if (searchToken) localStorage.setItem(SK_TOKEN, searchToken);
+  else localStorage.removeItem(SK_TOKEN);
+  closeWorkerModal();
+  showToast('✅ 設定を保存しました');
+}
+
+function toggleTokenVisibility() {
+  const input = document.getElementById('searchTokenInput');
+  input.type = input.type === 'password' ? 'text' : 'password';
+}
+
+// ===== FILTERS =====
+function buildFilters() {
+  const cats = [...new Set(policies.map(p=>p.category).filter(Boolean))];
+  const regs = [...new Set(policies.map(p => {
+    if (!p.region) return 'その他';
+    return (p.region.includes('日本')||p.region.match(/県|都|道|府|町|市/)) ? '日本・自治体' : p.region;
+  }))];
+  document.getElementById('categoryFilters').innerHTML = cats.map(c => `
+    <label class="filter-item"><input type="checkbox" value="${c}" class="cat-f" onchange="applyFilters()"> <span>${c}</span><span class="filter-count">${policies.filter(p=>p.category===c).length}</span></label>`).join('');
+  document.getElementById('regionFilters').innerHTML = regs.map(r => `
+    <label class="filter-item"><input type="checkbox" value="${r}" class="reg-f" onchange="applyFilters()"> <span>${r}</span></label>`).join('');
+}
+
+function applyFilters() {
+  const q = (document.getElementById('searchInput')?.value||'').toLowerCase();
+  const cats = [...document.querySelectorAll('.cat-f:checked')].map(e=>e.value);
+  const regs = [...document.querySelectorAll('.reg-f:checked')].map(e=>e.value);
+  const evs = [...document.querySelectorAll('#evidenceFilters input:checked')].map(e=>e.value);
+  const sts = [...document.querySelectorAll('#statusFilters input:checked')].map(e=>e.value);
+  const sort = document.getElementById('sortSelect')?.value||'id';
+
+  let filtered = policies.filter(p => {
+    if (q && !JSON.stringify(p).toLowerCase().includes(q)) return false;
+    if (cats.length && !cats.includes(p.category)) return false;
+    if (evs.length && !evs.includes(p.evidence_level)) return false;
+    if (sts.length && !sts.includes(p.status)) return false;
+    if (regs.length) {
+      const isJP = p.region?.includes('日本')||p.region?.match(/県|都|道|府|町|市/);
+      if (!regs.includes(isJP?'日本・自治体':(p.region||'その他'))) return false;
+    }
+    return true;
+  });
+
+  if (sort==='year_desc') filtered.sort((a,b)=>parseInt(b.year||0)-parseInt(a.year||0));
+  else if (sort==='evidence') {
+    const ord={'高':0,'中':1,'低':2,'調査中':3};
+    filtered.sort((a,b)=>(ord[a.evidence_level]||9)-(ord[b.evidence_level]||9));
+  } else if (sortCol) {
+    filtered.sort((a,b)=>{let av=a[sortCol]||'',bv=b[sortCol]||'';return typeof av==='string'?av.localeCompare(bv,'ja')*sortDir:(av-bv)*sortDir;});
+  }
+
+  updateSummary(filtered); renderCards(filtered); renderTable(filtered);
+  document.getElementById('noResults').style.display = filtered.length===0?'block':'none';
+}
+
+function isJP(region) { return region?.includes('日本')||region?.match(/県|都|道|府|町|市/); }
+
+function updateSummary(f) {
+  const jp = f.filter(p=>isJP(p.region)).length;
+  document.getElementById('s-total').textContent = f.length;
+  document.getElementById('s-japan').textContent = jp;
+  document.getElementById('s-overseas').textContent = f.length-jp;
+  document.getElementById('s-highev').textContent = f.filter(p=>p.evidence_level==='高').length;
+  document.getElementById('ev-high-count').textContent = f.filter(p=>p.evidence_level==='高').length;
+  document.getElementById('ev-med-count').textContent = f.filter(p=>p.evidence_level==='中').length;
+  document.getElementById('ev-low-count').textContent = f.filter(p=>p.evidence_level==='低').length;
+  document.getElementById('ev-na-count').textContent = f.filter(p=>p.evidence_level==='調査中').length;
+}
+
+function updateHeaderStats() {
+  document.getElementById('total-count').textContent = `政策数：${policies.length}件`;
+  document.getElementById('category-count').textContent = `カテゴリー：${new Set(policies.map(p=>p.category)).size}種類`;
+  const os = new Set(policies.filter(p=>!isJP(p.region)).map(p=>p.region));
+  document.getElementById('country-count').textContent = `海外事例：${os.size}カ国`;
+}
+
+function evBadge(level) {
+  const cls={'高':'ev-high','中':'ev-medium','低':'ev-low','調査中':'ev-na'};
+  const icon={'高':'✅','中':'🔶','低':'⚠️','調査中':'🔍'};
+  return `<span class="ev-badge ${cls[level]||'ev-na'}">${icon[level]||''}${level||'不明'}</span>`;
+}
+function statusColor(s){return s==='実施中'?'#15803d':s==='予定'?'#1a56db':s==='完了'?'#64748b':'#92400e';}
+
+function renderCards(filtered) {
+  document.getElementById('cardView').innerHTML = filtered.map(p=>`
+    <div class="policy-card" onclick="openModal('${p.id}')">
+      <div class="card-header">
+        <div class="card-title">${p.name}</div>
+        <span style="font-size:0.72rem;font-weight:600;color:${statusColor(p.status)};white-space:nowrap">${p.status}</span>
+      </div>
+      <div class="tags">
+        <span class="tag tag-cat">${p.category}</span>
+        <span class="tag tag-country">${p.region}</span>
+        ${evBadge(p.evidence_level)}
+      </div>
+      <div class="card-budget">💰 <strong>${p.budget}</strong></div>
+      <div class="card-desc">${(p.description||'').substring(0,85)}...</div>
+    </div>`).join('');
+}
+
+function renderTable(filtered) {
+  document.getElementById('tableBody').innerHTML = filtered.map(p=>`
+    <tr onclick="openModal('${p.id}')">
+      <td><strong>${p.name}</strong></td>
+      <td><span class="tag tag-cat">${p.category}</span></td>
+      <td>${p.region}</td>
+      <td>${p.year}年〜</td>
+      <td style="font-size:0.78rem">${p.budget}</td>
+      <td>${evBadge(p.evidence_level)}</td>
+      <td style="color:${statusColor(p.status)};font-weight:600;font-size:0.82rem">${p.status}</td>
+    </tr>`).join('');
+}
+
+function setSortCol(col){if(sortCol===col)sortDir*=-1;else{sortCol=col;sortDir=1;}applyFilters();}
+function setView(v){currentView=v;document.getElementById('cardView').style.display=v==='card'?'grid':'none';document.getElementById('tableView').style.display=v==='table'?'block':'none';document.getElementById('cardViewBtn').classList.toggle('active',v==='card');document.getElementById('tableViewBtn').classList.toggle('active',v==='table');}
+
+function openModal(id) {
+  const p = policies.find(x=>String(x.id)===String(id));
+  if(!p) return;
+  const tags = (p.tags||'').split(',').filter(Boolean);
+  const hasSource = p.source && p.source.startsWith('http');
+  document.getElementById('modalContent').innerHTML = `
+    <div class="tags" style="margin-bottom:10px">
+      <span class="tag tag-cat">${p.category}</span>
+      <span class="tag tag-country">${p.region}</span>
+      ${evBadge(p.evidence_level)}
+      <span style="font-size:0.72rem;font-weight:600;color:${statusColor(p.status)}">${p.status}</span>
+    </div>
+    <h2>${p.name}</h2>
+    <div class="detail-section">
+      <h4>基本情報</h4>
+      <div class="detail-row"><span class="key">開始年度</span><span>${p.year}年〜</span></div>
+      <div class="detail-row"><span class="key">対象地域</span><span>${p.region}</span></div>
+      <div class="detail-row"><span class="key">カテゴリー</span><span>${p.category}</span></div>
+      <div class="detail-row"><span class="key">実施状況</span><span style="color:${statusColor(p.status)};font-weight:600">${p.status}</span></div>
+    </div>
+    <div class="detail-section">
+      <h4>予算・財源</h4>
+      <div class="detail-row"><span class="key">予算規模</span><span><strong>${p.budget}</strong></span></div>
+      <div class="detail-row"><span class="key">財源</span><span>${p.budget_source||'-'}</span></div>
+    </div>
+    <div class="detail-section">
+      <h4>政策の概要</h4>
+      <p style="font-size:0.87rem;line-height:1.7">${p.description}</p>
+    </div>
+    <div class="detail-section">
+      <h4>エビデンス・効果 ${evBadge(p.evidence_level)}</h4>
+      <div class="evidence-box">${p.evidence_text||'データなし'}</div>
+    </div>
+    ${tags.length?`<div class="detail-section"><h4>タグ</h4><div class="tags">${tags.map(t=>`<span class="tag" style="background:#f1f5f9;color:#475569">#${t.trim()}</span>`).join('')}</div></div>`:''}
+    <div class="detail-section source-section">
+      <h4>出典・一次資料</h4>
+      ${hasSource
+        ? `<a class="source-card" href="${p.source}" target="_blank" rel="noopener">
+            <span class="icon">📄</span>
+            <div class="info">
+              <div class="title">${p.source_label||'出典リンク'}</div>
+              <div class="url">${p.source}</div>
+            </div>
+            <span class="arrow">→</span>
+          </a>`
+        : `<p style="font-size:0.85rem;color:var(--text-muted)">${p.source_label||'出典情報なし'}</p>`
+      }
+    </div>`;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function closeModal(e){if(!e||e.target===document.getElementById('modalOverlay'))document.getElementById('modalOverlay').classList.remove('open');}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2800);
+}
+
+document.addEventListener('keydown', e=>{if(e.key==='Escape'){closeModal();closeWorkerModal();}});
+init();
+</script>
+</body>
+</html>
